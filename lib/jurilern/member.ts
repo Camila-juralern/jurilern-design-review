@@ -1,0 +1,93 @@
+import { createHash, randomBytes } from 'node:crypto'
+import { and, eq, gt, ne } from 'drizzle-orm'
+import { cookies } from 'next/headers'
+import { db } from '@/lib/db'
+import { members, rooms, type Member } from '@/lib/db/schema'
+import { ONLINE_WINDOW_MS } from './catalog'
+
+const COOKIE = 'jl_member'
+const isDev = process.env.NODE_ENV === 'development'
+
+export const hashToken = (token: string) => createHash('sha256').update(token).digest('hex')
+
+export function newToken() {
+  return randomBytes(32).toString('base64url')
+}
+
+export async function setMemberCookie(token: string) {
+  const jar = await cookies()
+  jar.set(COOKIE, token, {
+    httpOnly: true,
+    path: '/',
+    maxAge: 60 * 60 * 24 * 180,
+    sameSite: isDev ? 'none' : 'lax',
+    secure: isDev ? true : process.env.NODE_ENV === 'production',
+  })
+}
+
+export async function clearMemberCookie() {
+  const jar = await cookies()
+  jar.delete(COOKIE)
+}
+
+export async function getMember(): Promise<Member | null> {
+  const token = (await cookies()).get(COOKIE)?.value
+  if (!token) return null
+  const [member] = await db.select().from(members).where(eq(members.tokenHash, hashToken(token))).limit(1)
+  return member ?? null
+}
+
+export function normalizeRoomCode(value: unknown) {
+  return String(value ?? '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9-]/g, '')
+    .slice(0, 16)
+}
+
+export async function buildState(member: Member) {
+  const [room] = await db.select().from(rooms).where(eq(rooms.code, member.roomCode)).limit(1)
+  const since = new Date(Date.now() - ONLINE_WINDOW_MS)
+  const others = await db
+    .select({
+      id: members.id,
+      name: members.name,
+      avatar: members.avatar,
+      completed: members.completed,
+      focusStartedAt: members.focusStartedAt,
+      focusMinutes: members.focusMinutes,
+    })
+    .from(members)
+    .where(and(eq(members.roomCode, member.roomCode), ne(members.id, member.id), gt(members.lastSeen, since)))
+
+  const focusing = (m: { focusStartedAt: Date | null; focusMinutes: number | null }) =>
+    !!m.focusStartedAt &&
+    !!m.focusMinutes &&
+    Date.now() - m.focusStartedAt.getTime() < (m.focusMinutes + 15) * 60 * 1000
+
+  return {
+    me: {
+      id: member.id,
+      name: member.name,
+      points: member.points,
+      completed: member.completed,
+      avatar: member.avatar,
+      ownedAvatars: member.ownedAvatars,
+      todos: member.todos,
+      focusing: focusing(member),
+    },
+    room: {
+      code: member.roomCode,
+      teamPoints: room?.teamPoints ?? 0,
+      decor: room?.decor ?? null,
+      ownedDecor: room?.ownedDecor ?? [],
+    },
+    members: others.map((m) => ({
+      id: m.id,
+      name: m.name,
+      avatar: m.avatar,
+      completed: m.completed,
+      focusing: focusing(m),
+    })),
+  }
+}
