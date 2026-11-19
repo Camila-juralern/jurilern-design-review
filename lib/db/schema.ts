@@ -2,7 +2,7 @@ import { integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-c
 
 export type Todo = { id: number; text: string; done: boolean }
 export type MemberCustomization = { owned: string[]; hat: string; outfit: string; arms?: string; wings?: string; eyes?: string }
-export type RoomCustomization = { owned: string[]; wall: string; floor: string }
+export type RoomCustomization = { owned: string[]; wall: string; floor: string; scene?: string; specialDecor?: string }
 
 export const rooms = pgTable('jl_rooms', {
   code: text('code').primaryKey(),

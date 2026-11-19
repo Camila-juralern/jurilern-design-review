@@ -35,16 +35,26 @@ async function handle(member: Member, type: string, id: string, body: Record<str
       if (!updated.length) return 'Nicht genug persönliche Punkte oder bereits freigeschaltet'; return
     }
     case 'buy-luckbox': {
-      const owned = member.customization?.owned ?? []
-      const available = SPECIAL_LOOT.filter(item => item.category === 'avatar' ? !member.ownedAvatars.includes(item.id) : !owned.includes(item.id))
-      if (!available.length) return 'Du hast alle besonderen Glücksbox-Gegenstände bereits freigeschaltet.'
+      const room = (await db.select().from(rooms).where(eq(rooms.code, member.roomCode)).limit(1))[0]
+      const memberOwned = member.customization?.owned ?? []
+      const roomOwned = room?.customization?.owned ?? []
+      const available = SPECIAL_LOOT.filter(item => {
+        if (item.category === 'avatar') return !member.ownedAvatars.includes(item.id)
+        if (item.category === 'room') return !roomOwned.includes(item.id)
+        return !memberOwned.includes(item.id)
+      })
+      if (!available.length) return 'Alle besonderen Glücksbox-Gegenstände sind bereits freigeschaltet.'
       const prize = available[randomInt(available.length)]
-      const updates = prize.category === 'avatar'
-        ? { points: sql`${members.points} - ${LUCKBOX_PRICE}`, ownedAvatars: sql`array_append(${members.ownedAvatars}, ${prize.id})`, avatar: prize.id }
-        : { points: sql`${members.points} - ${LUCKBOX_PRICE}`, customization: sql`jsonb_set(${members.customization}, '{owned}', coalesce(${members.customization}->'owned', '[]'::jsonb) || to_jsonb(${prize.id}::text))` }
-      const opened = await db.update(members).set(updates).where(and(eq(members.id, member.id), sql`${members.points} >= ${LUCKBOX_PRICE}`)).returning({ id: members.id })
-      if (!opened.length) return 'Eine Glücksbox kostet 300 persönliche Punkte.'
-      return { loot: { id: prize.id, name: prize.name, emoji: prize.emoji, category: prize.category } }
+      const charged = await db.update(members).set({ points: sql`${members.points} - ${LUCKBOX_PRICE}` }).where(and(eq(members.id, member.id), sql`${members.points} >= ${LUCKBOX_PRICE}`)).returning({ id: members.id })
+      if (!charged.length) return 'Eine Glücksbox kostet 300 persönliche Punkte.'
+      if (prize.category === 'avatar') {
+        await db.update(members).set({ ownedAvatars: sql`array_append(${members.ownedAvatars}, ${prize.id})`, avatar: prize.id }).where(eq(members.id, member.id))
+      } else if (prize.category === 'room') {
+        await db.update(rooms).set({ customization: sql`jsonb_set(${rooms.customization}, '{owned}', coalesce(${rooms.customization}->'owned', '[]'::jsonb) || to_jsonb(${prize.id}::text))` }).where(eq(rooms.code, member.roomCode))
+      } else {
+        await db.update(members).set({ customization: sql`jsonb_set(${members.customization}, '{owned}', coalesce(${members.customization}->'owned', '[]'::jsonb) || to_jsonb(${prize.id}::text))` }).where(eq(members.id, member.id))
+      }
+      return { loot: { id: prize.id, name: prize.name, emoji: prize.emoji, category: prize.category, slot: prize.slot ?? null } }
     }
     case 'buy-decor': {
       const price = DECOR_PRICES[id]
@@ -76,8 +86,8 @@ async function handle(member: Member, type: string, id: string, body: Record<str
       const special = SPECIAL_LOOT.find(item => item.id === id && item.category !== 'avatar')
       const item = storeItem ?? special
       if (!item) return 'Unbekannter Artikel'
-      const key = item.category
-      if (key === 'hat' || key === 'outfit' || key === 'arms' || key === 'wings' || key === 'eyes') {
+      const key = item.category === 'room' ? item.slot : item.category
+      if (item.category === 'hat' || item.category === 'outfit' || item.category === 'arms' || item.category === 'wings' || item.category === 'eyes') {
         const isDefault = id === 'hat_none' || id === 'outfit_hoodie' || id === 'arms_none' || id === 'wings_none' || id === 'eyes_default'
         if (!isDefault && !(member.customization?.owned ?? []).includes(id)) return 'Artikel nicht freigeschaltet'
         await db.update(members).set({ customization: sql`jsonb_set(${members.customization}, ${`{${key}}`}, to_jsonb(${id}::text))` }).where(eq(members.id, member.id)); return
