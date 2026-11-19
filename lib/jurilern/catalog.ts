@@ -1,9 +1,13 @@
 export const AVATAR_PRICES: Record<string, number> = {
-  fox: 0, owl: 40, cat: 60, panda: 80, person: 100,
+  fox: 0,
+  owl: 40,
+  cat: 60,
+  panda: 80,
+  person: 100,
 }
 
-// Special rewards are exclusive to the 300-point luck box.
-export type SpecialLootCategory = 'avatar' | 'hat' | 'outfit' | 'arms' | 'wings'
+// All rare cosmetics are exclusive rewards from the 300-point luck box.
+export type SpecialLootCategory = 'avatar' | 'hat' | 'outfit' | 'arms' | 'wings' | 'eyes'
 export const SPECIAL_LOOT: Array<{ id: string; category: SpecialLootCategory; name: string; emoji: string }> = [
   { id: 'dragon', category: 'avatar', name: 'Drache', emoji: '🐲' },
   { id: 'unicorn', category: 'avatar', name: 'Einhorn', emoji: '🦄' },
@@ -13,15 +17,29 @@ export const SPECIAL_LOOT: Array<{ id: string; category: SpecialLootCategory; na
   { id: 'hat_wizard', category: 'hat', name: 'Zauberhut', emoji: '🧙' },
   { id: 'hat_halo', category: 'hat', name: 'Lichtring', emoji: '😇' },
   { id: 'outfit_space', category: 'outfit', name: 'Space-Anzug', emoji: '🚀' },
+  { id: 'outfit_judge', category: 'outfit', name: 'Richterrobe', emoji: '⚖️' },
+  { id: 'outfit_judge_royal', category: 'outfit', name: 'Festliche Richterrobe', emoji: '👩‍⚖️' },
   { id: 'arms_robot_silver', category: 'arms', name: 'Silberne Roboterarme', emoji: '🦾' },
   { id: 'arms_robot_gold', category: 'arms', name: 'Goldene Roboterarme', emoji: '⚙️' },
+  { id: 'arms_robot_plasma', category: 'arms', name: 'Plasma-Roboterarme', emoji: '✨' },
   { id: 'wings_angel', category: 'wings', name: 'Engelsflügel', emoji: '🪽' },
   { id: 'wings_dragon', category: 'wings', name: 'Drachenflügel', emoji: '🐉' },
   { id: 'wings_phoenix', category: 'wings', name: 'Phönixflügel', emoji: '🔥' },
+  { id: 'eyes_rose', category: 'eyes', name: 'Rosafarbene Augen', emoji: '🩷' },
+  { id: 'eyes_gold', category: 'eyes', name: 'Goldene Augen', emoji: '🌟' },
+  { id: 'eyes_red', category: 'eyes', name: 'Rubinrote Augen', emoji: '❤️' },
+  { id: 'eyes_ice', category: 'eyes', name: 'Eisblaue Augen', emoji: '🧊' },
+  { id: 'eyes_violet', category: 'eyes', name: 'Violette Augen', emoji: '💜' },
 ]
 export const LUCKBOX_PRICE = 300
 
-export const DECOR_PRICES: Record<string, number> = { plant: 30, books: 45, lamp: 60, trophy: 100 }
+export const DECOR_PRICES: Record<string, number> = {
+  plant: 30,
+  books: 45,
+  lamp: 60,
+  trophy: 100,
+}
+
 export const STORE_ITEMS: Record<string, { name: string; category: 'hat' | 'outfit' | 'wall' | 'floor' | 'decor'; price: number }> = {
   hat_cap: { name: 'Basecap', category: 'hat', price: 35 },
   outfit_hoodie: { name: 'Lern-Hoodie', category: 'outfit', price: 0 },
@@ -41,6 +59,7 @@ export const STORE_ITEMS: Record<string, { name: string; category: 'hat' | 'outf
   decor_trophy: { name: 'Team-Pokal', category: 'decor', price: 100 },
   decor_plush: { name: 'Fuchs-Plüschtier', category: 'decor', price: 65 },
 }
+
 export const FOCUS_MINUTES = [15, 25, 30, 45, 50]
 export const REWARDS = { personalPerFocus: 25, teamPerFocus: 10, teamTogetherBonus: 5 }
 export const ONLINE_WINDOW_MS = 2 * 60 * 1000

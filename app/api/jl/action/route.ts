@@ -35,8 +35,8 @@ async function handle(member: Member, type: string, id: string, body: Record<str
       if (!updated.length) return 'Nicht genug persönliche Punkte oder bereits freigeschaltet'; return
     }
     case 'buy-luckbox': {
-      const memberOwned = member.customization?.owned ?? []
-      const available = SPECIAL_LOOT.filter(item => item.category === 'avatar' ? !member.ownedAvatars.includes(item.id) : !memberOwned.includes(item.id))
+      const owned = member.customization?.owned ?? []
+      const available = SPECIAL_LOOT.filter(item => item.category === 'avatar' ? !member.ownedAvatars.includes(item.id) : !owned.includes(item.id))
       if (!available.length) return 'Du hast alle besonderen Glücksbox-Gegenstände bereits freigeschaltet.'
       const prize = available[randomInt(available.length)]
       const updates = prize.category === 'avatar'
@@ -60,14 +60,14 @@ async function handle(member: Member, type: string, id: string, body: Record<str
       const item = STORE_ITEMS[id]
       if (!item) return 'Unbekannter Shop-Artikel'
       if (item.category === 'hat' || item.category === 'outfit') {
-        const owned = member.customization?.owned ?? []
-        if (owned.includes(id)) return 'Bereits freigeschaltet'
+        const ownedItems = member.customization?.owned ?? []
+        if (ownedItems.includes(id)) return 'Bereits freigeschaltet'
         const updated = await db.update(members).set({ points: sql`${members.points} - ${item.price}`, customization: sql`jsonb_set(${members.customization}, '{owned}', coalesce(${members.customization}->'owned', '[]'::jsonb) || to_jsonb(${id}::text))` }).where(and(eq(members.id, member.id), sql`${members.points} >= ${item.price}`)).returning({ id: members.id })
         if (!updated.length) return 'Nicht genug persönliche Punkte'; return
       }
       const [room] = await db.select().from(rooms).where(eq(rooms.code, member.roomCode)).limit(1)
-      const owned = room?.customization?.owned ?? []
-      if (owned.includes(id)) return 'Bereits freigeschaltet'
+      const ownedRoomItems = room?.customization?.owned ?? []
+      if (ownedRoomItems.includes(id)) return 'Bereits freigeschaltet'
       const updated = await db.update(rooms).set({ teamPoints: sql`${rooms.teamPoints} - ${item.price}`, customization: sql`jsonb_set(${rooms.customization}, '{owned}', coalesce(${rooms.customization}->'owned', '[]'::jsonb) || to_jsonb(${id}::text))` }).where(and(eq(rooms.code, member.roomCode), sql`${rooms.teamPoints} >= ${item.price}`)).returning({ code: rooms.code })
       if (!updated.length) return 'Nicht genug Teampunkte'; return
     }
@@ -77,8 +77,8 @@ async function handle(member: Member, type: string, id: string, body: Record<str
       const item = storeItem ?? special
       if (!item) return 'Unbekannter Artikel'
       const key = item.category
-      if (key === 'hat' || key === 'outfit' || key === 'arms' || key === 'wings') {
-        const isDefault = id === 'hat_none' || id === 'outfit_hoodie' || id === 'arms_none' || id === 'wings_none'
+      if (key === 'hat' || key === 'outfit' || key === 'arms' || key === 'wings' || key === 'eyes') {
+        const isDefault = id === 'hat_none' || id === 'outfit_hoodie' || id === 'arms_none' || id === 'wings_none' || id === 'eyes_default'
         if (!isDefault && !(member.customization?.owned ?? []).includes(id)) return 'Artikel nicht freigeschaltet'
         await db.update(members).set({ customization: sql`jsonb_set(${members.customization}, ${`{${key}}`}, to_jsonb(${id}::text))` }).where(eq(members.id, member.id)); return
       }
