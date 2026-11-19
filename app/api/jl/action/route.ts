@@ -1,7 +1,8 @@
+import { randomInt } from 'node:crypto'
 import { and, desc, eq, gt, isNotNull, ne, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { members, rooms, sessions, type Member, type Todo } from '@/lib/db/schema'
-import { AVATAR_PRICES, DECOR_PRICES, FOCUS_MINUTES, ONLINE_WINDOW_MS, REWARDS, STORE_ITEMS } from '@/lib/jurilern/catalog'
+import { AVATAR_PRICES, DECOR_PRICES, FOCUS_MINUTES, ONLINE_WINDOW_MS, REWARDS, STORE_ITEMS, LUCKBOX_PRICE, SPECIAL_LOOT } from '@/lib/jurilern/catalog'
 import { buildState, getMember } from '@/lib/jurilern/member'
 
 const fail = (error: string, status = 400) => Response.json({ error }, { status })
@@ -29,9 +30,21 @@ async function handle(member: Member, type: string, id: string, body: Record<str
     }
     case 'buy-avatar': {
       const price = AVATAR_PRICES[id]
-      if (price === undefined) return 'Unbekannter Charakter'
+      if (price === undefined) return 'Dieser Charakter ist nur in einer Glücksbox erhältlich.'
       const updated = await db.update(members).set({ points: sql`${members.points} - ${price}`, ownedAvatars: sql`array_append(${members.ownedAvatars}, ${id})`, avatar: id }).where(and(eq(members.id, member.id), sql`${members.points} >= ${price}`, sql`NOT (${id} = ANY(${members.ownedAvatars}))`)).returning({ id: members.id })
       if (!updated.length) return 'Nicht genug persönliche Punkte oder bereits freigeschaltet'; return
+    }
+    case 'buy-luckbox': {
+      const memberOwned = member.customization?.owned ?? []
+      const available = SPECIAL_LOOT.filter(item => item.category === 'avatar' ? !member.ownedAvatars.includes(item.id) : !memberOwned.includes(item.id))
+      if (!available.length) return 'Du hast alle besonderen Glücksbox-Gegenstände bereits freigeschaltet.'
+      const prize = available[randomInt(available.length)]
+      const updates = prize.category === 'avatar'
+        ? { points: sql`${members.points} - ${LUCKBOX_PRICE}`, ownedAvatars: sql`array_append(${members.ownedAvatars}, ${prize.id})`, avatar: prize.id }
+        : { points: sql`${members.points} - ${LUCKBOX_PRICE}`, customization: sql`jsonb_set(${members.customization}, '{owned}', coalesce(${members.customization}->'owned', '[]'::jsonb) || to_jsonb(${prize.id}::text))` }
+      const opened = await db.update(members).set(updates).where(and(eq(members.id, member.id), sql`${members.points} >= ${LUCKBOX_PRICE}`)).returning({ id: members.id })
+      if (!opened.length) return 'Eine Glücksbox kostet 300 persönliche Punkte.'
+      return { loot: { id: prize.id, name: prize.name, emoji: prize.emoji, category: prize.category } }
     }
     case 'buy-decor': {
       const price = DECOR_PRICES[id]
@@ -66,7 +79,8 @@ async function handle(member: Member, type: string, id: string, body: Record<str
         if (id !== 'hat_none' && id !== 'outfit_hoodie' && !(member.customization?.owned ?? []).includes(id)) return 'Artikel nicht freigeschaltet'
         await db.update(members).set({ customization: sql`jsonb_set(${members.customization}, ${`{${key}}`}, to_jsonb(${id}::text))` }).where(eq(members.id, member.id)); return
       }
-      if (!(await db.select({ code: rooms.code }).from(rooms).where(and(eq(rooms.code, member.roomCode), sql`${id} = ANY(ARRAY(SELECT jsonb_array_elements_text(coalesce(${rooms.customization}->'owned','[]'::jsonb))))`)).limit(1)).length) return 'Artikel nicht freigeschaltet'
+      const [room] = await db.select().from(rooms).where(eq(rooms.code, member.roomCode)).limit(1)
+      if (!(room?.customization?.owned ?? []).includes(id)) return 'Artikel nicht freigeschaltet'
       await db.update(rooms).set({ customization: sql`jsonb_set(${rooms.customization}, ${`{${key}}`}, to_jsonb(${id}::text))` }).where(eq(rooms.code, member.roomCode)); return
     }
     case 'focus-start': {
@@ -77,14 +91,15 @@ async function handle(member: Member, type: string, id: string, body: Record<str
     case 'focus-cancel': await db.update(members).set({ focusStartedAt: null, focusMinutes: null }).where(eq(members.id, member.id)); return
     case 'focus-complete': {
       if (!member.focusStartedAt || !member.focusMinutes) return 'Keine laufende Fokus-Einheit'
+      const minutes = member.focusMinutes
       const elapsed = Date.now() - member.focusStartedAt.getTime()
-      if (elapsed < member.focusMinutes * 60_000 - 5000) return 'Fokus-Einheit noch nicht beendet'
+      if (elapsed < minutes * 60_000 - 5000) return 'Fokus-Einheit noch nicht beendet'
       const claimed = await db.update(members).set({ points: sql`${members.points} + ${REWARDS.personalPerFocus}`, completed: sql`${members.completed} + 1`, focusStartedAt: null, focusMinutes: null }).where(and(eq(members.id, member.id), isNotNull(members.focusStartedAt))).returning({ id: members.id })
       if (!claimed.length) return 'Bereits gutgeschrieben'
       const together = await db.select({ id: members.id }).from(members).where(and(eq(members.roomCode, member.roomCode), ne(members.id, member.id), isNotNull(members.focusStartedAt), gt(members.lastSeen, new Date(Date.now() - ONLINE_WINDOW_MS))))
       const teamGain = REWARDS.teamPerFocus + (together.length ? REWARDS.teamTogetherBonus : 0)
       await db.update(rooms).set({ teamPoints: sql`${rooms.teamPoints} + ${teamGain}` }).where(eq(rooms.code, member.roomCode))
-      await db.insert(sessions).values({ memberId: member.id, roomCode: member.roomCode, minutes: member.focusMinutes ?? Number(member.focusMinutes), points: REWARDS.personalPerFocus })
+      await db.insert(sessions).values({ memberId: member.id, roomCode: member.roomCode, minutes, points: REWARDS.personalPerFocus })
       return { reward: { personal: REWARDS.personalPerFocus, team: teamGain, together: together.length > 0 } }
     }
     case 'todos': {

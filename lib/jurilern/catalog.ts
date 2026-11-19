@@ -1,18 +1,25 @@
 export const AVATAR_PRICES: Record<string, number> = {
   fox: 0, owl: 40, cat: 60, panda: 80, person: 100,
-  dragon: 180, unicorn: 220, phoenix: 260, wolf: 150,
 }
 
-export const DECOR_PRICES: Record<string, number> = { plant: 30, books: 45, lamp: 60, trophy: 100 }
+// These rewards can only be obtained from the 300-point luck box.
+export const SPECIAL_LOOT: Array<{ id: string; category: 'avatar' | 'hat' | 'outfit'; name: string; emoji: string }> = [
+  { id: 'dragon', category: 'avatar', name: 'Drache', emoji: '🐲' },
+  { id: 'unicorn', category: 'avatar', name: 'Einhorn', emoji: '🦄' },
+  { id: 'phoenix', category: 'avatar', name: 'Phönix', emoji: '🔥' },
+  { id: 'wolf', category: 'avatar', name: 'Wolf', emoji: '🐺' },
+  { id: 'hat_crown', category: 'hat', name: 'Goldene Krone', emoji: '👑' },
+  { id: 'hat_wizard', category: 'hat', name: 'Zauberhut', emoji: '🧙' },
+  { id: 'hat_halo', category: 'hat', name: 'Lichtring', emoji: '😇' },
+  { id: 'outfit_space', category: 'outfit', name: 'Space-Anzug', emoji: '🚀' },
+]
+export const LUCKBOX_PRICE = 300
 
+export const DECOR_PRICES: Record<string, number> = { plant: 30, books: 45, lamp: 60, trophy: 100 }
 export const STORE_ITEMS: Record<string, { name: string; category: 'hat' | 'outfit' | 'wall' | 'floor' | 'decor'; price: number }> = {
   hat_cap: { name: 'Basecap', category: 'hat', price: 35 },
-  hat_crown: { name: 'Krone', category: 'hat', price: 120 },
-  hat_wizard: { name: 'Zauberhut', category: 'hat', price: 90 },
-  hat_halo: { name: 'Lichtring', category: 'hat', price: 180 },
   outfit_hoodie: { name: 'Lern-Hoodie', category: 'outfit', price: 0 },
   outfit_robe: { name: 'Jura-Robe', category: 'outfit', price: 80 },
-  outfit_space: { name: 'Space-Anzug', category: 'outfit', price: 140 },
   outfit_scholar: { name: 'Gelehrten-Outfit', category: 'outfit', price: 110 },
   wall_indigo: { name: 'Indigo-Wand', category: 'wall', price: 0 },
   wall_mint: { name: 'Mint-Wand', category: 'wall', price: 45 },
@@ -28,7 +35,6 @@ export const STORE_ITEMS: Record<string, { name: string; category: 'hat' | 'outf
   decor_trophy: { name: 'Team-Pokal', category: 'decor', price: 100 },
   decor_plush: { name: 'Fuchs-Plüschtier', category: 'decor', price: 65 },
 }
-
 export const FOCUS_MINUTES = [15, 25, 30, 45, 50]
 export const REWARDS = { personalPerFocus: 25, teamPerFocus: 10, teamTogetherBonus: 5 }
 export const ONLINE_WINDOW_MS = 2 * 60 * 1000
