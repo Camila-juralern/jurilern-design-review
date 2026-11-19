@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { members, rooms } from '@/lib/db/schema'
-import { buildState, hashToken, newToken, normalizeRoomCode, setMemberCookie } from '@/lib/jurilern/member'
+import { buildState, getMember, hashToken, newToken, normalizeRoomCode, setMemberCookie } from '@/lib/jurilern/member'
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}))
@@ -12,19 +12,27 @@ export async function POST(request: Request) {
 
   await db.insert(rooms).values({ code: roomCode }).onConflictDoNothing()
 
+  // Reuse the signed-in member when changing rooms, preserving semester progress,
+  // points, inventory, and personal checklist instead of creating duplicate profiles.
+  const existing = await getMember()
+  if (existing) {
+    const [member] = await db.update(members)
+      .set({ name, roomCode, lastSeen: new Date(), focusStartedAt: null, focusMinutes: null })
+      .where(eq(members.id, existing.id))
+      .returning()
+    return Response.json(await buildState(member))
+  }
+
   const token = newToken()
-  const [member] = await db
-    .insert(members)
-    .values({
-      tokenHash: hashToken(token),
-      roomCode,
-      name,
-      todos: [
-        { id: 1, text: 'Lernziel für heute festlegen', done: false },
-        { id: 2, text: '25 Minuten konzentriert lernen', done: false },
-      ],
-    })
-    .returning()
+  const [member] = await db.insert(members).values({
+    tokenHash: hashToken(token),
+    roomCode,
+    name,
+    todos: [
+      { id: 1, text: 'Lernziel für heute festlegen', done: false },
+      { id: 2, text: '25 Minuten konzentriert lernen', done: false },
+    ],
+  }).returning()
 
   await setMemberCookie(token)
   return Response.json(await buildState(member))
