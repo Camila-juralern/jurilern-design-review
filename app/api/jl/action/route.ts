@@ -72,11 +72,14 @@ async function handle(member: Member, type: string, id: string, body: Record<str
       if (!updated.length) return 'Nicht genug Teampunkte'; return
     }
     case 'equip-item': {
-      const item = STORE_ITEMS[id]
+      const storeItem = STORE_ITEMS[id]
+      const special = SPECIAL_LOOT.find(item => item.id === id && item.category !== 'avatar')
+      const item = storeItem ?? special
       if (!item) return 'Unbekannter Artikel'
       const key = item.category
-      if (key === 'hat' || key === 'outfit') {
-        if (id !== 'hat_none' && id !== 'outfit_hoodie' && !(member.customization?.owned ?? []).includes(id)) return 'Artikel nicht freigeschaltet'
+      if (key === 'hat' || key === 'outfit' || key === 'arms' || key === 'wings') {
+        const isDefault = id === 'hat_none' || id === 'outfit_hoodie' || id === 'arms_none' || id === 'wings_none'
+        if (!isDefault && !(member.customization?.owned ?? []).includes(id)) return 'Artikel nicht freigeschaltet'
         await db.update(members).set({ customization: sql`jsonb_set(${members.customization}, ${`{${key}}`}, to_jsonb(${id}::text))` }).where(eq(members.id, member.id)); return
       }
       const [room] = await db.select().from(rooms).where(eq(rooms.code, member.roomCode)).limit(1)

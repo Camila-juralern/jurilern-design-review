@@ -2,8 +2,9 @@ export const AVATAR_PRICES: Record<string, number> = {
   fox: 0, owl: 40, cat: 60, panda: 80, person: 100,
 }
 
-// These rewards can only be obtained from the 300-point luck box.
-export const SPECIAL_LOOT: Array<{ id: string; category: 'avatar' | 'hat' | 'outfit'; name: string; emoji: string }> = [
+// Special rewards are exclusive to the 300-point luck box.
+export type SpecialLootCategory = 'avatar' | 'hat' | 'outfit' | 'arms' | 'wings'
+export const SPECIAL_LOOT: Array<{ id: string; category: SpecialLootCategory; name: string; emoji: string }> = [
   { id: 'dragon', category: 'avatar', name: 'Drache', emoji: '🐲' },
   { id: 'unicorn', category: 'avatar', name: 'Einhorn', emoji: '🦄' },
   { id: 'phoenix', category: 'avatar', name: 'Phönix', emoji: '🔥' },
@@ -12,6 +13,11 @@ export const SPECIAL_LOOT: Array<{ id: string; category: 'avatar' | 'hat' | 'out
   { id: 'hat_wizard', category: 'hat', name: 'Zauberhut', emoji: '🧙' },
   { id: 'hat_halo', category: 'hat', name: 'Lichtring', emoji: '😇' },
   { id: 'outfit_space', category: 'outfit', name: 'Space-Anzug', emoji: '🚀' },
+  { id: 'arms_robot_silver', category: 'arms', name: 'Silberne Roboterarme', emoji: '🦾' },
+  { id: 'arms_robot_gold', category: 'arms', name: 'Goldene Roboterarme', emoji: '⚙️' },
+  { id: 'wings_angel', category: 'wings', name: 'Engelsflügel', emoji: '🪽' },
+  { id: 'wings_dragon', category: 'wings', name: 'Drachenflügel', emoji: '🐉' },
+  { id: 'wings_phoenix', category: 'wings', name: 'Phönixflügel', emoji: '🔥' },
 ]
 export const LUCKBOX_PRICE = 300
 

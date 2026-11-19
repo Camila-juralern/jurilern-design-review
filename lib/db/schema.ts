@@ -1,7 +1,7 @@
 import { integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 
 export type Todo = { id: number; text: string; done: boolean }
-export type MemberCustomization = { owned: string[]; hat: string; outfit: string }
+export type MemberCustomization = { owned: string[]; hat: string; outfit: string; arms?: string; wings?: string }
 export type RoomCustomization = { owned: string[]; wall: string; floor: string }
 
 export const rooms = pgTable('jl_rooms', {
