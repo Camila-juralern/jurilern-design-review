@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { members } from '@/lib/db/schema'
-import { clearMemberCookie, getMember } from '@/lib/jurilern/member'
+import { getMember } from '@/lib/jurilern/member'
 
 export async function POST() {
   const member = await getMember()
